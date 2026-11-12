@@ -1,0 +1,8 @@
+<router-outlet />
+
+@if (loading.isLoading()) {
+  <div class="loading-overlay" role="status" aria-live="polite">
+    <span class="loading-spinner" aria-hidden="true"></span>
+    <span>Carregando...</span>
+  </div>
+}

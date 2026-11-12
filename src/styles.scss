@@ -1,0 +1,120 @@
+/* Design tokens shared by the application. */
+:root {
+  color-scheme: light;
+
+  --color-page: #f8f5f0;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1ece5;
+  --color-text: #292521;
+  --color-text-muted: #766f68;
+  --color-border: #e5ded6;
+  --color-primary: #9b594c;
+  --color-primary-hover: #81483e;
+  --color-focus: #c38173;
+  --color-danger: #b42318;
+
+  --font-family-base: Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family-display: Georgia, 'Times New Roman', serif;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --shadow-card: 0 1.5rem 4rem rgb(54 40 31 / 10%);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --content-width: 72rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  min-height: 100%;
+  background: var(--color-page);
+  font-family: var(--font-family-base);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--color-page);
+  font-family: var(--font-family-base);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+[type='button'],
+[type='submit'] {
+  cursor: pointer;
+}
+
+button:disabled,
+[type='button']:disabled,
+[type='submit']:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-text);
+  line-height: 1.15;
+}
+
+h1,
+h2 {
+  font-family: var(--font-family-display);
+  font-weight: 400;
+}
+
+::selection {
+  color: var(--color-text);
+  background: #ead2cb;
+}

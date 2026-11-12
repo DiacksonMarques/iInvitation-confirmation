@@ -1,0 +1,230 @@
+<main class="invitation-page">
+  @if (isLoading()) {
+    <p class="page-message" role="status">Carregando convite...</p>
+  } @else if (loadError()) {
+    <section class="invitation-card">
+      <h1>Não foi possível abrir o convite</h1>
+      <button class="primary-button" type="button" (click)="loadInvitation()">
+        Tentar novamente
+      </button>
+    </section>
+  } @else if (invitation(); as data) {
+    <article class="invitation-card">
+      <header class="invitation-header">
+        <p class="eyebrow">VOCÊ ESTÁ CONVIDADO</p>
+        <h1>{{ data.event.name }}</h1>
+
+        @if (data.event.description) {
+          <p class="event-description">{{ data.event.description }}</p>
+        }
+      </header>
+
+      <section class="event-details" aria-label="Informações do evento">
+        <div>
+          <span>Data e horário</span>
+          <strong>{{ data.event.event_date | date: 'dd/MM/yyyy HH:mm' }}</strong>
+        </div>
+
+        @if (data.event.location) {
+          <div>
+            <span>Local</span>
+            <strong>{{ data.event.location }}</strong>
+          </div>
+        }
+
+        @if (data.event.confirmation_deadline) {
+          <div>
+            <span>Confirme até</span>
+            <strong>
+              {{ data.event.confirmation_deadline | date: 'dd/MM/yyyy HH:mm' }}
+            </strong>
+          </div>
+        }
+      </section>
+
+      @if (data.event.invitation_message) {
+        <blockquote class="invitation-message">
+          {{ data.event.invitation_message }}
+        </blockquote>
+      }
+
+      <section class="rsvp-section" aria-labelledby="rsvp-title">
+        <h2 id="rsvp-title">Confirmação de presença</h2>
+        <p>Selecione uma resposta para cada pessoa.</p>
+
+        @if (!data.event.can_confirm) {
+          <p class="deadline-notice" role="status">
+            O período para confirmação foi encerrado.
+          </p>
+        }
+
+        <div class="guest-list">
+          @for (guest of data.guests; track guest.invitation_guest_id) {
+            <article class="guest-card">
+              <div class="guest-card-heading">
+                <h3>{{ guest.name }}</h3>
+                <span class="guest-status">{{ statusLabel(guest.status) }}</span>
+              </div>
+
+              <div class="response-actions">
+                <button
+                  class="response-button"
+                  type="button"
+                  [class.selected]="guest.status === 'confirmed'"
+                  [disabled]="
+                    !data.event.can_confirm ||
+                    savingGuestId() === guest.invitation_guest_id
+                  "
+                  (click)="respond(guest.invitation_guest_id, 'confirmed')"
+                >
+                  Vou comparecer
+                </button>
+
+                <button
+                  class="response-button"
+                  type="button"
+                  [class.selected]="guest.status === 'declined'"
+                  [disabled]="
+                    !data.event.can_confirm ||
+                    savingGuestId() === guest.invitation_guest_id
+                  "
+                  (click)="respond(guest.invitation_guest_id, 'declined')"
+                >
+                  Não poderei ir
+                </button>
+              </div>
+            </article>
+          } @empty {
+            <p>Não há convidados associados a este convite.</p>
+          }
+        </div>
+      </section>
+
+      <section class="gift-section" aria-labelledby="gifts-title">
+        <h2 id="gifts-title">Lista de presentes</h2>
+        <p>Se desejar, escolha os presentes para o grupo.</p>
+
+        @if (data.gifts.length === 0) {
+          <p class="gift-notice">
+            Ainda não há presentes disponíveis para este evento.
+          </p>
+        } @else {
+          @if (!data.event.can_select_gifts) {
+            <p class="gift-notice" role="status">
+              @if (!hasConfirmedGuest()) {
+                Confirme a presença de pelo menos uma pessoa para escolher presentes.
+              } @else {
+                O prazo para escolher presentes foi encerrado.
+              }
+            </p>
+          }
+
+          <div class="public-gift-list">
+            @for (gift of visibleGifts(data.gifts); track gift.event_gift_id) {
+              <article class="public-gift-card">
+                <label class="public-gift-choice">
+                  <input
+                    type="checkbox"
+                    [checked]="isGiftSelected(gift.event_gift_id)"
+                    [disabled]="
+                      !data.event.can_select_gifts ||
+                      (!isGiftSelected(gift.event_gift_id) &&
+                        gift.available_quantity === 0)
+                    "
+                    (change)="toggleGift(
+                      gift.event_gift_id,
+                      $any($event.target).checked
+                    )"
+                  />
+
+                  <span class="public-gift-info">
+                    <strong>{{ gift.name }}</strong>
+                    <small>{{ gift.description || 'Sem descrição.' }}</small>
+                    <small>
+                      {{ gift.available_quantity }} unidade(s) disponível(is)
+                    </small>
+                  </span>
+                </label>
+
+                @if (isGiftSelected(gift.event_gift_id)) {
+                  <div class="public-gift-quantity">
+                    <span>Quantidade</span>
+
+                    <div
+                      class="quantity-stepper"
+                      role="group"
+                      [attr.aria-label]="'Quantidade de ' + gift.name"
+                    >
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Diminuir quantidade de ' + gift.name"
+                        [disabled]="
+                          !data.event.can_select_gifts ||
+                          giftQuantity(gift.event_gift_id) <= 1
+                        "
+                        (click)="adjustGiftQuantity(
+                          gift.event_gift_id,
+                          -1,
+                          gift.available_quantity
+                        )"
+                      >
+                        −
+                      </button>
+
+                      <output aria-live="polite">
+                        {{ giftQuantity(gift.event_gift_id) }}
+                      </output>
+
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Aumentar quantidade de ' + gift.name"
+                        [disabled]="
+                          !data.event.can_select_gifts ||
+                          giftQuantity(gift.event_gift_id) >= gift.available_quantity
+                        "
+                        (click)="adjustGiftQuantity(
+                          gift.event_gift_id,
+                          1,
+                          gift.available_quantity
+                        )"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                }
+              </article>
+            }  @empty {
+              @if (data.gifts.length === 0) {
+                <p class="gift-notice">
+                  Ainda não há presentes disponíveis para este evento.
+                </p>
+              } @else {
+                <p class="gift-notice">
+                  Todos os presentes foram escolhidos.
+                </p>
+                }
+              }
+          </div>
+
+          @if (data.event.can_select_gifts) {
+            <button
+              class="primary-button save-gifts-button"
+              type="button"
+              [disabled]="!canSaveGiftSelections() || isSavingGifts()"
+              (click)="saveGiftSelections()"
+            >
+              {{ isSavingGifts() ? 'Salvando...' : 'Salvar escolhas' }}
+            </button>
+          }
+        }
+      </section>
+    </article>
+  } @else {
+    <section class="invitation-card">
+      <p class="eyebrow">CONVITE</p>
+      <h1>Convite não encontrado</h1>
+      <p>Confira se o link recebido está completo e correto.</p>
+    </section>
+  }
+</main>

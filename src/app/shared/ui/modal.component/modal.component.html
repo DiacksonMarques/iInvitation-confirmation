@@ -1,0 +1,27 @@
+<dialog
+  #dialog
+  id="dialog"
+  class="modal-dialog"
+  [attr.aria-label]="title"
+  (click)="closeOnBackdrop($event)"
+  (close)="onDialogClosed()"
+>
+  <section class="modal-panel">
+    <header class="modal-header">
+      <h2>{{ title }}</h2>
+
+      <button
+        class="modal-close"
+        type="button"
+        aria-label="Fechar janela"
+        (click)="requestClose()"
+      >
+        ×
+      </button>
+    </header>
+
+    <div class="modal-body">
+      <ng-content />
+    </div>
+  </section>
+</dialog>

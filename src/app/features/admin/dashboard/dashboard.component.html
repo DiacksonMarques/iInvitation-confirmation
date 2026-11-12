@@ -1,0 +1,177 @@
+<main class="dashboard">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">ÁREA ADMINISTRATIVA</p>
+      <h1>Visão geral</h1>
+    </div>
+
+    @if (events().length > 0) {
+      <label class="event-selector">
+        <span>Evento selecionado</span>
+        <select
+          [ngModel]="selectedEventId()"
+          (ngModelChange)="onEventChange($event)"
+        >
+          @for (event of events(); track event.id) {
+            <option [value]="event.id">{{ event.name }}</option>
+          }
+        </select>
+      </label>
+    }
+  </header>
+
+  @if (isLoadingEvents()) {
+    <p class="dashboard-message" role="status">Carregando eventos...</p>
+  } @else if (eventsLoadError()) {
+    <section class="dashboard-empty">
+      <h2>Não foi possível carregar os eventos</h2>
+      <button class="primary-button" type="button" (click)="loadEvents()">
+        Tentar novamente
+      </button>
+    </section>
+  } @else if (selectedEvent(); as currentEvent) {
+    <section class="welcome-section" aria-labelledby="welcome-title">
+      <div>
+        <p class="eyebrow">RESUMO DO EVENTO</p>
+        <h2 id="welcome-title">{{ currentEvent.name }}</h2>
+        <p class="event-date">
+          Data do evento:
+          {{ currentEvent.event_date | date: 'dd/MM/yyyy HH:mm' }}
+        </p>
+      </div>
+
+      <a class="primary-button" routerLink="/admin/eventos">
+        Gerenciar eventos
+      </a>
+    </section>
+
+    @if (isLoadingSummary()) {
+      <p class="dashboard-message" role="status">
+        Carregando os dados do evento...
+      </p>
+    } @else if (summaryLoadError()) {
+      <section class="dashboard-empty">
+        <h2>Não foi possível carregar o resumo</h2>
+        <button class="primary-button" type="button" (click)="loadSummary()">
+          Tentar novamente
+        </button>
+      </section>
+    } @else if (summary(); as stats) {
+      <section class="stats-grid" aria-label="Resumo das confirmações">
+        <article class="stat-card">
+          <span class="stat-label">Convidados</span>
+          <strong class="stat-value">{{ stats.total }}</strong>
+          <span class="stat-detail">pessoas vinculadas ao evento</span>
+        </article>
+
+        <article class="stat-card">
+          <span class="stat-label">Confirmados</span>
+          <strong class="stat-value">{{ stats.confirmed }}</strong>
+          <span class="stat-detail">presenças confirmadas</span>
+        </article>
+
+        <article class="stat-card">
+          <span class="stat-label">Pendentes</span>
+          <strong class="stat-value">{{ stats.pending }}</strong>
+          <span class="stat-detail">aguardando resposta</span>
+        </article>
+
+        <article class="stat-card">
+          <span class="stat-label">Recusados</span>
+          <strong class="stat-value">{{ stats.declined }}</strong>
+          <span class="stat-detail">não poderão comparecer</span>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">ACOMPANHAMENTO</p>
+              <h2>Respostas recentes</h2>
+            </div>
+
+            <a [routerLink]="['/admin/eventos', currentEvent.id]">
+              Gerenciar evento
+            </a>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Convidado</th>
+                  <th scope="col">Situação</th>
+                  <th scope="col">Atualizado</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                @for (guest of stats.recent; track guest.id) {
+                  <tr>
+                    <td>{{ guest.guest_name }}</td>
+                    <td>
+                      <span
+                        class="status"
+                        [class.confirmed]="guest.status === 'confirmed'"
+                        [class.pending]="guest.status === 'pending'"
+                        [class.declined]="guest.status === 'declined'"
+                      >
+                        {{ statusLabel(guest.status) }}
+                      </span>
+                    </td>
+                    <td>{{ guest.updated_at | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="3">Ainda não há respostas para este evento.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <aside class="panel quick-actions">
+          <p class="eyebrow">ATALHOS</p>
+          <h2>Ações rápidas</h2>
+
+          <a
+            class="action-link"
+            [routerLink]="['/admin/eventos', currentEvent.id]"
+          >
+            <span class="action-icon" aria-hidden="true">↗</span>
+            <span>
+              <strong>Gerenciar este evento</strong>
+              <small>Editar dados, convidados e presentes</small>
+            </span>
+          </a>
+
+          <a class="action-link" routerLink="/admin/convidados">
+            <span class="action-icon" aria-hidden="true">+</span>
+            <span>
+              <strong>Grupos e convidados</strong>
+              <small>Gerenciar os cadastros de convidados</small>
+            </span>
+          </a>
+
+          <a class="action-link" routerLink="/admin/presentes">
+            <span class="action-icon" aria-hidden="true">◇</span>
+            <span>
+              <strong>Catálogo de presentes</strong>
+              <small>Gerenciar presentes reutilizáveis</small>
+            </span>
+          </a>
+        </aside>
+      </section>
+    }
+  } @else {
+    <section class="dashboard-empty">
+      <h2>Nenhum evento disponível</h2>
+      <p>Crie um evento para acompanhar convidados e confirmações.</p>
+      <a class="primary-button" routerLink="/admin/eventos">
+        Ir para eventos
+      </a>
+    </section>
+  }
+</main>

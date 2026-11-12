@@ -1,0 +1,541 @@
+<main class="event-management-page">
+  <a class="back-link" routerLink="/admin/eventos">
+    <span aria-hidden="true">←</span>
+    Voltar para eventos
+  </a>
+
+  @if (isLoading()) {
+    <p class="page-message" role="status">Carregando evento...</p>
+  } @else if (loadError()) {
+    <section class="page-message error-state">
+      <h1>Não foi possível abrir o evento</h1>
+      <p>Confira sua conexão e tente novamente.</p>
+      <button class="primary-button" type="button" (click)="loadEvent()">
+        Tentar novamente
+      </button>
+    </section>
+  } @else if (event(); as currentEvent) {
+    <header class="event-header">
+      <div>
+        <p class="eyebrow">GERENCIAMENTO DO EVENTO</p>
+        <h1>{{ currentEvent.name }}</h1>
+        <p class="event-subtitle">
+          Organize os dados, os convidados e os presentes deste evento.
+        </p>
+      </div>
+
+      <span
+        class="status-badge"
+        [class.status-draft]="currentEvent.status === 'draft'"
+        [class.status-active]="currentEvent.status === 'active'"
+        [class.status-closed]="currentEvent.status === 'closed'"
+      >
+        {{ statusLabel(currentEvent.status) }}
+      </span>
+    </header>
+
+    <nav class="management-tabs" aria-label="Seções do evento">
+      <button
+        type="button"
+        [class.active]="activeTab() === 'overview'"
+        [attr.aria-current]="activeTab() === 'overview' ? 'page' : null"
+        (click)="selectTab('overview')"
+      >
+        Visão geral
+      </button>
+
+      <button
+        type="button"
+        [class.active]="activeTab() === 'guests'"
+        [attr.aria-current]="activeTab() === 'guests' ? 'page' : null"
+        (click)="selectTab('guests')"
+      >
+        Convidados
+      </button>
+
+      <button
+        type="button"
+        [class.active]="activeTab() === 'gifts'"
+        [attr.aria-current]="activeTab() === 'gifts' ? 'page' : null"
+        (click)="selectTab('gifts')"
+      >
+        Presentes
+      </button>
+    </nav>
+
+    @if (activeTab() === 'overview') {
+      <section class="management-panel" aria-labelledby="overview-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="overview-title">Dados do evento</h2>
+            <p>Confira as informações cadastradas.</p>
+          </div>
+
+          <button class="secondary-button" type="button" disabled>
+            Editar dados
+          </button>
+        </div>
+
+        <dl class="event-info-grid">
+          <div class="info-item">
+            <dt>Data e horário</dt>
+            <dd>{{ currentEvent.event_date | date: 'dd/MM/yyyy HH:mm' }}</dd>
+          </div>
+
+          <div class="info-item">
+            <dt>Prazo para confirmação</dt>
+            <dd>
+              @if (currentEvent.confirmation_deadline) {
+                {{ currentEvent.confirmation_deadline | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                Não definido
+              }
+            </dd>
+          </div>
+
+          <div class="info-item info-item-wide">
+            <dt>Local</dt>
+            <dd>{{ currentEvent.location || 'Não informado' }}</dd>
+          </div>
+
+          <div class="info-item info-item-wide">
+            <dt>Descrição</dt>
+            <dd>{{ currentEvent.description || 'Nenhuma descrição adicionada.' }}</dd>
+          </div>
+
+          <div class="info-item info-item-wide">
+            <dt>Mensagem do convite</dt>
+            <dd>{{ currentEvent.invitation_message || 'Nenhuma mensagem adicionada.' }}</dd>
+          </div>
+        </dl>
+      </section>
+    }
+
+    @if (activeTab() === 'guests') {
+      <section class="management-panel" aria-labelledby="guests-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="guests-title">Convidados</h2>
+            <p>
+              Associe grupos e escolha quais pessoas participarão deste evento.
+            </p>
+          </div>
+        </div>
+
+        @if (isLoadingGuests()) {
+          <p class="page-message" role="status">
+            Carregando grupos e convidados...
+          </p>
+        } @else if (guestsLoadError()) {
+          <div class="page-message error-state">
+            <p>Não foi possível carregar os grupos.</p>
+            <button
+              class="primary-button"
+              type="button"
+              (click)="loadGuestAssociations()"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        } @else {
+          <div class="group-association-toolbar">
+            <p>{{ eventInvitations().length }} {{ eventInvitations().length === 1 ? 'grupo associado' : 'grupos associados' }}</p>
+
+            <button class="primary-button" type="button" [disabled]="availableGroups().length === 0" (click)="openGroupModal()">
+              Adicionar grupos
+            </button>
+          </div>
+
+          <div class="associated-groups">
+            @for (invitation of eventInvitations(); track invitation.id) {
+              @if (groupForInvitation(invitation); as group) {
+                <div class="associated-group-actions">
+                  <span>
+                    {{ invitation.event_invitation_guests.length }} participantes
+                  </span>
+
+                  <button
+                    class="text-button"
+                    type="button"
+                    (click)="beginEditGuests(invitation)"
+                  >
+                    Editar convidados
+                  </button>
+
+                  <button
+                    class="delete-button"
+                    type="button"
+                    (click)="removeGroupFromEvent(invitation, group.name)"
+                  >
+                    Remover do evento
+                  </button>
+
+                  <button
+                    class="reset-button"
+                    type="button"
+                    (click)="resetInvitationResponses(invitation, group.name)"
+                  >
+                    Resetar respostas
+                  </button>
+
+                  <button
+                    class="secondary-button"
+                    type="button"
+                    [disabled]="sharingInvitationId() === invitation.id"
+                    (click)="shareInvitation(invitation, group.name)"
+                  >
+                    {{
+                      sharingInvitationId() === invitation.id
+                        ? 'Preparando...'
+                        : 'Compartilhar convite'
+                    }}
+                  </button>
+                </div>
+                <article class="associated-group">
+                  <header class="associated-group-header">
+                    <div>
+                      <h3>{{ group.name }}</h3>
+                      <p>
+                        Selecione as pessoas que participarão deste evento.
+                      </p>
+                    </div>
+                    <span>
+                      {{ invitation.event_invitation_guests.length }}
+                      selecionados
+                    </span>
+                  </header>
+
+                  @if (group.guests.length === 0) {
+                    <p class="page-message">
+                      Este grupo ainda não possui convidados.
+                    </p>
+                  } @else {
+                    <div class="guest-options">
+                      @for (guest of group.guests; track guest.id) {
+                        @let status = guestStatus(invitation, guest.id);
+                        @let isEditing = editingInvitationId() === invitation.id;
+
+                        <label class="guest-option">
+                          <input
+                            type="checkbox"
+                            [checked]="
+                              isEditing
+                                ? isDraftGuestSelected(guest.id)
+                                : status !== null
+                            "
+                            [disabled]="!isEditing"
+                            (change)="toggleDraftGuest(
+                              guest.id,
+                              $any($event.target).checked
+                            )"
+                          />
+
+                          <span class="guest-option-name">{{ guest.name }}</span>
+
+                          @if (status) {
+                            <span class="guest-status">{{ status }}</span>
+                          }
+                        </label>
+                      }
+                    </div>
+
+                    @if (editingInvitationId() === invitation.id) {
+                      <footer class="guest-selection-footer">
+                        <button
+                          class="secondary-button"
+                          type="button"
+                          (click)="cancelEditGuests()"
+                        >
+                          Cancelar
+                        </button>
+
+                        <button
+                          class="primary-button"
+                          type="button"
+                          (click)="saveGuestChanges(invitation)"
+                        >
+                          Salvar participantes
+                        </button>
+                      </footer>
+                    }
+                  }
+                </article>
+              }
+            } @empty {
+              <div class="empty-state">
+                <h3>Nenhum grupo associado</h3>
+                <p>Escolha um grupo acima para começar a montar a lista.</p>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'gifts') {
+      <section class="management-panel" aria-labelledby="gifts-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="gifts-title">Presentes</h2>
+            <p>Escolha presentes do catálogo e defina a quantidade disponível.</p>
+          </div>
+        </div>
+
+        @if (isLoadingGifts()) {
+          <p class="page-message" role="status">Carregando presentes...</p>
+        } @else if (giftsLoadError()) {
+          <div class="page-message error-state">
+            <p>Não foi possível carregar os presentes.</p>
+            <button
+              class="primary-button"
+              type="button"
+              (click)="loadEventGifts()"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        } @else {
+          <div class="gift-association-toolbar">
+            <p>
+              {{ eventGifts().length }}
+              {{ eventGifts().length === 1 ? 'presente associado' : 'presentes associados' }}
+            </p>
+
+            <button
+              class="primary-button"
+              type="button"
+              [disabled]="availableGifts().length === 0"
+              (click)="openGiftModal()"
+            >
+              Adicionar presentes
+            </button>
+          </div>
+
+          <div class="event-gift-list">
+            @for (eventGift of eventGifts(); track eventGift.id) {
+              <article class="event-gift-card">
+                @if (editingEventGiftId() === eventGift.id) {
+                  <div class="event-gift-edit">
+                    <div>
+                      <h3>{{ eventGift.gift.name }}</h3>
+                      <p>
+                        {{ eventGift.selected_quantity }}
+                        unidade(s) já escolhida(s) pelos convidados.
+                      </p>
+                    </div>
+
+                    <label class="event-gift-quantity-field">
+                      <span>Quantidade total</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        [value]="draftEventGiftQuantity()"
+                        (input)="draftEventGiftQuantity.set($any($event.target).valueAsNumber)"
+                      />
+                    </label>
+
+                    <div class="event-gift-actions">
+                      <button
+                        class="secondary-button"
+                        type="button"
+                        (click)="cancelEditEventGift()"
+                      >
+                        Cancelar
+                      </button>
+
+                      <button
+                        class="primary-button"
+                        type="button"
+                        [disabled]="savingEventGiftId() === eventGift.id"
+                        (click)="saveEventGiftQuantity(eventGift)"
+                      >
+                        {{
+                          savingEventGiftId() === eventGift.id
+                            ? 'Salvando...'
+                            : 'Salvar quantidade'
+                        }}
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="event-gift-card-info">
+                    <div>
+                      <h3>{{ eventGift.gift.name }}</h3>
+                      <p>{{ eventGift.gift.description || 'Sem descrição.' }}</p>
+                      <small>
+                        {{ eventGift.selected_quantity }}
+                        de {{ eventGift.total_quantity }} unidade(s) escolhida(s)
+                      </small>
+                    </div>
+
+                    <span class="gift-quantity">
+                      {{ eventGift.total_quantity }}
+                      {{ eventGift.total_quantity === 1 ? 'unidade' : 'unidades' }}
+                    </span>
+
+                    <div class="event-gift-actions">
+                      <button
+                        class="secondary-button"
+                        type="button"
+                        (click)="beginEditEventGift(eventGift)"
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        class="delete-button"
+                        type="button"
+                        [disabled]="
+                          eventGift.selected_quantity > 0 ||
+                          savingEventGiftId() === eventGift.id
+                        "
+                        [attr.title]="
+                          eventGift.selected_quantity > 0
+                            ? 'Este presente já foi escolhido por convidados'
+                            : null
+                        "
+                        (click)="removeEventGift(eventGift)"
+                      >
+                        {{ savingEventGiftId() === eventGift.id ? 'Removendo...' : 'Excluir' }}
+                      </button>
+                    </div>
+                  </div>
+                }
+              </article>
+            } @empty {
+              <div class="empty-state">
+                <h3>Nenhum presente associado</h3>
+                <p>Adicione presentes do catálogo para este evento.</p>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    }
+  }
+</main>
+
+<app-modal
+  [open]="isGroupModalOpen() || isGiftModalOpen()"
+  [title]="isGiftModalOpen() ? 'Adicionar presentes' : 'Adicionar grupos ao evento'"
+  (closed)="closeActiveModal()"
+>
+  @if (isGroupModalOpen()) {
+    <div class="group-picker">
+      <p>Selecione um ou mais grupos para associar a este evento.</p>
+
+      <label class="group-search">
+        <span>Buscar grupo ou convidado</span>
+        <input
+          type="search"
+          placeholder="Digite um nome"
+          [value]="groupSearch()"
+          (input)="groupSearch.set($any($event.target).value)"
+        />
+      </label>
+
+      @for (group of filteredAvailableGroups(); track group.id) {
+        <label class="group-picker-option">
+          <input type="checkbox" [checked]="isGroupSelected(group.id)" (change)="toggleGroupSelection(group.id, $any($event.target).checked)"/>
+
+          <span>{{ group.name }}</span>
+          <small> {{ group.guests.length }} {{ group.guests.length === 1 ? 'pessoa' : 'pessoas' }}</small>
+        </label>
+      } @empty {
+        @if (availableGroups().length === 0) {
+          <p>Todos os grupos já estão associados a este evento.</p>
+        } @else {
+          <p>Nenhum grupo ou convidado corresponde à busca.</p>
+        }
+      }
+      <footer class="guest-selection-footer">
+        <button class="secondary-button" type="button" (click)="closeGroupModal()">
+          Cancelar
+        </button>
+
+        <button class="primary-button" type="button" [disabled]="selectedGroupIds().length === 0 || isAddingGroups()" (click)="addSelectedGroups()">
+          {{ isAddingGroups() ? 'Adicionando...' : 'Adicionar ' + selectedGroupIds().length + ' grupo(s)' }}
+        </button>
+      </footer>
+    </div>
+  } @else if (isGiftModalOpen()) {
+    <div class="gift-picker">
+      <p>Selecione os presentes e informe a quantidade disponível no evento.</p>
+
+      <label class="gift-search">
+        <span>Buscar presente</span>
+        <input
+          type="search"
+          placeholder="Digite o nome ou a descrição"
+          [value]="giftSearch()"
+          (input)="giftSearch.set($any($event.target).value)"
+        />
+      </label>
+
+      <div class="gift-picker-list">
+        @for (gift of filteredAvailableGifts(); track gift.id) {
+          <label class="gift-picker-option">
+            <input
+              type="checkbox"
+              [checked]="isGiftSelected(gift.id)"
+              (change)="toggleGift(gift.id, $any($event.target).checked)"
+            />
+
+            <span class="gift-picker-details">
+              <strong>{{ gift.name }}</strong>
+              <small>{{ gift.description || 'Sem descrição.' }}</small>
+            </span>
+
+            @if (isGiftSelected(gift.id)) {
+              <span class="gift-quantity-input">
+                <span>Quantidade</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  [value]="selectedGiftQuantities()[gift.id]"
+                  (input)="setGiftQuantity(
+                    gift.id,
+                    $any($event.target).valueAsNumber
+                  )"
+                  (click)="$event.stopPropagation()"
+                  aria-label="Quantidade disponível"
+                />
+              </span>
+            }
+          </label>
+        } @empty {
+          @if (availableGifts().length === 0) {
+            <p>Todos os presentes do catálogo já estão associados.</p>
+          } @else {
+            <p>Nenhum presente corresponde à busca.</p>
+          }
+        }
+      </div>
+
+      <footer class="guest-selection-footer">
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="closeGiftModal()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="primary-button"
+          type="button"
+          [disabled]="!canAddSelectedGifts() || isAddingGifts()"
+          (click)="addSelectedGifts()"
+        >
+          {{
+            isAddingGifts()
+              ? 'Adicionando...'
+              : 'Adicionar ' + selectedGiftInputs().length + ' presente(s)'
+          }}
+        </button>
+      </footer>
+    </div>
+  }
+</app-modal>
