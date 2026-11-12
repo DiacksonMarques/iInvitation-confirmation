@@ -1,0 +1,39 @@
+<div class="admin-layout">
+  <aside class="sidebar" aria-label="Menu administrativo">
+    <a class="brand" routerLink="/admin" aria-label="Invitation Confirmation, início">
+      <span class="brand-mark" aria-hidden="true">✳</span>
+      <span class="brand-name">Invitation<br />Confirmation</span>
+    </a>
+
+    <nav class="navigation">
+      <a class="nav-link" routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" aria-current="page">
+        <span class="nav-icon" aria-hidden="true">⌂</span>
+        Visão geral
+      </a>
+
+      <a class="nav-link" routerLink="/admin/eventos" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <span class="nav-icon" aria-hidden="true">▦</span>
+        Eventos
+      </a>
+
+      <a class="nav-link" routerLink="/admin/convidados" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <span class="nav-icon" aria-hidden="true">♧</span>
+        Convidados
+      </a>
+
+      <a class="nav-link" routerLink="/admin/presentes" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <span class="nav-icon" aria-hidden="true">◇</span>
+        Presentes
+      </a>
+    </nav>
+
+    <button class="logout-button" type="button" (click)="logout()">
+      <span class="nav-icon" aria-hidden="true">↪</span>
+      Sair
+    </button>
+  </aside>
+
+  <main class="admin-content">
+    <router-outlet />
+  </main>
+</div>

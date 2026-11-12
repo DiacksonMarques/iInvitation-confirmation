@@ -1,0 +1,206 @@
+<section class="events-page" aria-labelledby="events-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">ADMINISTRAÇÃO</p>
+      <h1 id="events-title">Eventos</h1>
+      <p class="page-description">
+        Crie e organize os eventos e suas confirmações.
+      </p>
+    </div>
+
+    <button class="primary-button" type="button" (click)="openCreateModal()">
+      <span aria-hidden="true">+</span>
+      Novo evento
+    </button>
+  </header>
+
+  <section class="events-section" aria-label="Lista de eventos">
+    <div class="section-heading">
+      <h2>Seus eventos</h2>
+      <span class="event-count">{{ events().length }} eventos</span>
+    </div>
+    @if (isLoadingEvents()) {
+      <p class="list-message" role="status">Carregando eventos...</p>
+    } @else {
+      <div class="events-grid">
+        @for (event of events(); track event.id) {
+          <article class="event-card">
+            <header class="event-card-header">
+              <div class="event-title-group">
+                <h3>{{ event.name }}</h3>
+                <span class="status-badge" [class]="`status-badge status-${event.status}`">
+                  {{ statusLabel(event.status) }}
+                </span>
+              </div>
+
+              <button
+                class="icon-button"
+                type="button"
+                [attr.aria-label]="'Mais ações para ' + event.name"
+              >
+                ⋯
+              </button>
+            </header>
+
+            <p class="event-description">
+              {{ event.description || 'Nenhuma descrição adicionada.' }}
+            </p>
+
+            <dl class="event-details">
+              <div>
+                <dt>Data do evento</dt>
+                <dd>{{ event.event_date | date: 'dd/MM/yyyy' }}</dd>
+              </div>
+
+              <div>
+                <dt>Prazo para confirmação</dt>
+                <dd>{{ event.confirmation_deadline | date: 'dd/MM/yyyy' }}</dd>
+              </div>
+
+              <div>
+                <dt>Local</dt>
+                <dd>{{ event.location || 'Local não informado' }}</dd>
+              </div>
+            </dl>
+
+            <footer class="event-card-footer">
+              <button class="text-button" type="button" (click)="openEditModal(event)">
+                Editar evento
+              </button>
+              <button class="delete-button" type="button" [disabled]="deletingEventId() === event.id" (click)="deleteEvent(event)">
+                {{ deletingEventId() === event.id ? 'Excluindo...' : 'Excluir' }}
+              </button>
+              <a class="secondary-button" [routerLink]="['/admin/eventos', event.id]">
+                Gerenciar evento
+                <span aria-hidden="true">→</span>
+              </a>
+            </footer>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <span class="empty-icon" aria-hidden="true">◇</span>
+            <h3>Nenhum evento cadastrado</h3>
+            <p>Crie seu primeiro evento para começar a organizar os convidados.</p>
+            <button class="primary-button" type="button" (click)="openCreateModal()">
+              Criar primeiro evento
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+</section>
+
+<app-modal
+  [open]="isEventModalOpen()"
+  [title]="editingEvent() ? 'Editar evento' : 'Novo evento'"
+  (closed)="closeEventModal()"
+>
+  <form
+    class="event-form"
+    [formGroup]="eventForm"
+    (ngSubmit)="submitEventForm()"
+    novalidate
+  >
+    <div class="form-field">
+      <label for="event-name">Nome do evento</label>
+      <input
+        id="event-name"
+        type="text"
+        formControlName="name"
+        placeholder="Ex.: Chá revelação"
+        autocomplete="off"
+      />
+
+      @if (eventForm.controls.name.touched && eventForm.controls.name.hasError('required')) {
+        <small class="field-error">Informe o nome do evento.</small>
+      }
+      @if (eventForm.controls.name.touched && eventForm.controls.name.hasError('maxlength')) {
+        <small class="field-error">Use até 120 caracteres.</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <label for="event-description">Descrição <span>(opcional)</span></label>
+      <textarea
+        id="event-description"
+        formControlName="description"
+        rows="3"
+        placeholder="Conte um pouco sobre o evento"
+      ></textarea>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="event-date">Data e horário do evento</label>
+        <input
+          id="event-date"
+          type="datetime-local"
+          formControlName="event_date"
+        />
+
+        @if (eventForm.controls.event_date.touched && eventForm.controls.event_date.hasError('required')) {
+          <small class="field-error">Informe a data do evento.</small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="confirmation-deadline">
+          Prazo para confirmação <span>(opcional)</span>
+        </label>
+        <input
+          id="confirmation-deadline"
+          type="datetime-local"
+          formControlName="confirmation_deadline"
+        />
+
+        @if (eventForm.hasError('deadlineAfterEvent') && eventForm.controls.confirmation_deadline.touched) {
+          <small class="field-error">
+            O prazo deve ser anterior à data do evento.
+          </small>
+        }
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="event-location">Local <span>(opcional)</span></label>
+      <input
+        id="event-location"
+        type="text"
+        formControlName="location"
+        placeholder="Endereço ou nome do local"
+      />
+    </div>
+
+    <div class="form-field">
+      <label for="invitation-message">
+        Mensagem do convite <span>(opcional)</span>
+      </label>
+      <textarea
+        id="invitation-message"
+        formControlName="invitation_message"
+        rows="4"
+        placeholder="Mensagem que acompanhará o convite"
+      ></textarea>
+    </div>
+
+    <div class="form-field">
+      <label for="event-status">Status</label>
+      <select id="event-status" formControlName="status">
+        <option value="draft">Rascunho</option>
+        <option value="active">Ativo</option>
+        <option value="closed">Encerrado</option>
+      </select>
+    </div>
+
+    <footer class="form-actions">
+      <button class="cancel-button" type="button" (click)="closeEventModal()">
+        Cancelar
+      </button>
+
+      <button class="primary-button" type="submit" [disabled]="eventForm.invalid || isSaving()">
+        {{ isSaving() ? 'Salvando...' : editingEvent() ? 'Salvar alterações' : 'Criar evento' }}
+      </button>
+    </footer>
+  </form>
+</app-modal>

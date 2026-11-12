@@ -1,0 +1,27 @@
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  color: var(--color-text);
+  background: rgb(248 245 240 / 75%);
+  backdrop-filter: blur(2px);
+}
+
+.loading-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

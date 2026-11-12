@@ -1,0 +1,151 @@
+<section class="gifts-page" aria-labelledby="gifts-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">ADMINISTRAÇÃO</p>
+      <h1 id="gifts-title">Presentes</h1>
+      <p class="page-description">
+        Gerencie o catálogo reutilizável de presentes.
+      </p>
+    </div>
+
+    <button class="primary-button" type="button" (click)="openCreateGift()">
+      <span aria-hidden="true">+</span>
+      Novo presente
+    </button>
+  </header>
+
+  <section class="catalog-section" aria-label="Catálogo de presentes">
+    <div class="catalog-toolbar">
+      <label class="search-field">
+        <span>Buscar presente</span>
+        <input
+          type="search"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="searchTerm.set($event)"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="Digite o nome ou descrição"
+        />
+      </label>
+
+      @if (!isLoading() && !loadError()) {
+        <span class="gift-count">
+          {{ gifts().length }}
+          {{ gifts().length === 1 ? 'presente' : 'presentes' }}
+        </span>
+      }
+    </div>
+
+    @if (isLoading()) {
+      <div class="list-state" role="status">Carregando catálogo...</div>
+    } @else if (loadError()) {
+      <div class="list-state" role="alert">
+        <h2>Não foi possível carregar os presentes</h2>
+        <button class="secondary-button" type="button" (click)="loadGifts()">
+          Tentar novamente
+        </button>
+      </div>
+    } @else {
+      <div class="gifts-grid">
+        @for (gift of filteredGifts(); track gift.id) {
+          <article class="gift-card">
+            <div class="gift-card-icon" aria-hidden="true">◇</div>
+
+            <div class="gift-card-content">
+              <h2>{{ gift.name }}</h2>
+              <p>{{ gift.description || 'Sem descrição.' }}</p>
+            </div>
+
+            <div class="gift-actions">
+              <button
+                class="text-button"
+                type="button"
+                (click)="openEditGift(gift)"
+              >
+                Editar
+              </button>
+
+              <button
+                class="text-button danger-text"
+                type="button"
+                (click)="deleteGift(gift)"
+              >
+                Excluir
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <span class="empty-icon" aria-hidden="true">◇</span>
+
+            @if (gifts().length === 0) {
+              <h2>Nenhum presente cadastrado</h2>
+              <p>Adicione um presente para começar seu catálogo.</p>
+              <button class="primary-button" type="button" (click)="openCreateGift()">
+                Criar primeiro presente
+              </button>
+            } @else {
+              <h2>Nenhum resultado encontrado</h2>
+              <p>Tente buscar por outro nome ou descrição.</p>
+            }
+          </div>
+        }
+      </div>
+    }
+  </section>
+</section>
+
+<app-modal
+  [open]="isGiftModalOpen()"
+  [title]="editingGift() ? 'Editar presente' : 'Novo presente'"
+  (closed)="closeGiftModal()"
+>
+  <form class="gift-form" (ngSubmit)="saveGift()">
+    <div class="form-field">
+      <label for="gift-name">Nome do presente</label>
+      <input
+        id="gift-name"
+        name="giftName"
+        type="text"
+        [(ngModel)]="giftName"
+        maxlength="120"
+        required
+        placeholder="Ex.: Carrinho de bebê"
+      />
+    </div>
+
+    <div class="form-field">
+      <label for="gift-description">
+        Descrição <span>(opcional)</span>
+      </label>
+      <textarea
+        id="gift-description"
+        name="giftDescription"
+        [(ngModel)]="giftDescription"
+        rows="4"
+        placeholder="Descreva o presente"
+      ></textarea>
+    </div>
+
+    @if (formError()) {
+      <p class="form-error" role="alert">{{ formError() }}</p>
+    }
+
+    <footer class="form-actions">
+      <button
+        class="cancel-button"
+        type="button"
+        (click)="closeGiftModal()"
+      >
+        Cancelar
+      </button>
+
+      <button
+        class="primary-button"
+        type="submit"
+        [disabled]="isSaving() || !giftName.trim()"
+      >
+        {{ isSaving() ? 'Salvando...' : editingGift() ? 'Salvar alterações' : 'Criar presente' }}
+      </button>
+    </footer>
+  </form>
+</app-modal>

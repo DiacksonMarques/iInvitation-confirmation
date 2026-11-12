@@ -1,0 +1,248 @@
+<section class="guests-page" aria-labelledby="guests-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">ADMINISTRAÇÃO</p>
+      <h1 id="guests-title">Convidados</h1>
+      <p class="page-description">
+        Organize seus grupos e as pessoas de cada grupo.
+      </p>
+    </div>
+
+    <button
+      class="primary-button"
+      type="button"
+      (click)="openCreateGroup()"
+    >
+      <span aria-hidden="true">+</span>
+      Novo grupo
+    </button>
+  </header>
+
+  <section class="groups-section" aria-label="Grupos de convidados">
+    <div class="section-heading">
+      <div>
+        <h2>Seus grupos</h2>
+        <p>Selecione um grupo para conferir seus convidados.</p>
+      </div>
+
+      @if (isLoadingGroups()) {
+        <span class="group-count">Carregando...</span>
+      } @else if (!groupsLoadError()) {
+        <span class="group-count">
+          {{ groups().length }}
+          {{ groups().length === 1 ? 'grupo' : 'grupos' }}
+        </span>
+      }
+    </div>
+
+    @if (isLoadingGroups()) {
+      <div class="list-state" role="status" aria-live="polite">
+        Carregando grupos...
+      </div>
+    } @else if (groupsLoadError()) {
+      <div class="list-state list-error" role="alert">
+        <h3>Não foi possível carregar os grupos</h3>
+        <p>Verifique sua conexão e tente novamente.</p>
+
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="loadGroups()"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    } @else {
+      <div class="groups-grid">
+        @for (group of groups(); track group.id) {
+          <article class="group-card">
+            <div class="group-card-icon" aria-hidden="true">♧</div>
+
+            <div class="group-card-content">
+              <h3>{{ group.name }}</h3>
+              <p>
+                {{ group.guests.length }}
+                {{ group.guests.length === 1 ? 'pessoa' : 'pessoas' }}
+              </p>
+            </div>
+
+            <button class="secondary-button" type="button" (click)="openManageGroup(group)" >
+              Gerenciar
+              <span aria-hidden="true">→</span>
+            </button>
+
+            <button class="delete-button" type="button" (click)="confirmDeleteGroup(group.id)" >
+              Excluir grupo
+            </button>
+          </article>
+        } @empty {
+          <div class="empty-state">
+            <span class="empty-icon" aria-hidden="true">♧</span>
+            <h3>Nenhum grupo cadastrado</h3>
+            <p>
+              Crie um grupo para começar a organizar seus convidados.
+            </p>
+            <button class="primary-button" type="button" (click)="openCreateGroup()" >
+              Criar primeiro grupo
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </section>
+</section>
+
+<app-modal [open]="isGroupModalOpen()" [title]="isGroupCreated() ? groupName : 'Novo grupo'" (closed)="closeGroupModal()" >
+  <div class="group-form">
+    <div class="form-field">
+      <label for="group-name">Nome do grupo</label>
+      <input id="group-name" type="text" [ngModel]="groupName" (ngModelChange)="groupName = $event" [ngModelOptions]="{ standalone: true }" placeholder="Ex.: Família Cid" maxlength="100" />
+    </div>
+
+    @if (!isGroupCreated()) {
+      <div class="form-actions">
+        <button class="cancel-button" type="button" (click)="closeGroupModal()" >
+          Cancelar
+        </button>
+
+        <button class="primary-button" type="button" [disabled]="!groupName.trim()" (click)="saveGroup()" >
+          Criar grupo
+        </button>
+      </div>
+    } @else {
+      <div class="guest-manager">
+        <div class="guest-manager-heading">
+          <div>
+            <h3>Convidados deste grupo</h3>
+            <p>Adicione as pessoas que fazem parte deste grupo.</p>
+          </div>
+        </div>
+
+        <form class="add-guest-form" (ngSubmit)="addGuest()">
+          <div class="form-field">
+            <label for="guest-name">Nome do convidado</label>
+            <input id="guest-name" name="guestName" type="text" [(ngModel)]="newGuestName" placeholder="Digite o nome" required />
+          </div>
+
+          <button class="primary-button" type="submit" [disabled]="!newGuestName.trim()" >
+            <span aria-hidden="true">+</span>
+            Adicionar
+          </button>
+        </form>
+
+        @if (selectedGroup(); as group) {
+          @if (group.guests.length > 0) {
+            <div class="guest-table-wrapper">
+              <table class="guest-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Convidado</th>
+                    <th scope="col">Informações</th>
+                    <th scope="col" class="actions-column">Ações</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  @for (guest of group.guests; track guest.id) {
+                    <tr>
+                      <td data-label="Convidado">
+                        <span class="guest-name">{{ guest.name }}</span>
+                        @if (guest.is_primary_contact) {
+                          <span class="primary-contact">Contato principal</span>
+                        }
+                      </td>
+
+                      <td data-label="Informações">
+                        @if (guest.phone || guest.email) {
+                          <span class="guest-information">
+                            {{ guest.phone || guest.email }}
+                          </span>
+                        } @else {
+                          <span class="muted-text">Não informado</span>
+                        }
+                      </td>
+
+                      <td data-label="Ações" class="actions-cell">
+                        @if (deletingGuestId() === guest.id) {
+                          <span class="delete-confirmation">
+                            Excluir?
+                            <button class="text-button danger-text" type="button" (click)="deleteGuest(guest.id)" >
+                              Sim
+                            </button>
+                            <button class="text-button" type="button" (click)="cancelDeleteGuest()" >
+                              Não
+                            </button>
+                          </span>
+                        } @else {
+                          <button class="text-button" type="button" (click)="toggleGuestDetails(guest)" >
+                            {{ expandedGuestId() === guest.id ? 'Fechar' : 'Editar dados' }}
+                          </button>
+
+                          <button class="text-button danger-text" type="button" (click)="confirmDeleteGuest(guest.id)">
+                            Excluir
+                          </button>
+                        }
+                      </td>
+                    </tr>
+
+                    @if (expandedGuestId() === guest.id) {
+                      @if (guestDraft(); as draft) {
+                        <tr class="guest-extra-row">
+                          <td colspan="3">
+                            <div class="guest-extra-fields">
+                              <div class="form-field">
+                                <label [for]="'guest-name-' + guest.id">Nome</label>
+                                <input [id]="'guest-name-' + guest.id" type="text" [(ngModel)]="draft.name" [ngModelOptions]="{ standalone: true }" required />
+                              </div>
+                              <div class="form-field">
+                                <label [for]="'guest-phone-' + guest.id">Telefone</label>
+                                <input [id]="'guest-phone-' + guest.id" type="tel" [(ngModel)]="draft.phone" [ngModelOptions]="{ standalone: true }" placeholder="(00) 00000-0000" />
+                              </div>
+
+                              <div class="form-field">
+                                <label [for]="'guest-email-' + guest.id">E-mail</label>
+                                <input [id]="'guest-email-' + guest.id" type="email" [(ngModel)]="draft.email" [ngModelOptions]="{ standalone: true }" placeholder="nome@email.com" />
+                              </div>
+
+                              <label class="checkbox-field">
+                                <input type="checkbox" [(ngModel)]="draft.is_primary_contact" [ngModelOptions]="{ standalone: true }" />
+                                Contato principal do grupo
+                              </label>
+
+                              <div class="guest-extra-actions">
+                                <button class="primary-button" type="button" (click)="saveGuest(guest.id)" >
+                                  Salvar alterações
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="guest-empty-state">
+              <p>Este grupo ainda não tem convidados.</p>
+              <span>Adicione o primeiro nome no campo acima.</span>
+            </div>
+          }
+        }
+
+        <footer class="form-actions">
+          <button class="cancel-button" type="button" (click)="closeGroupModal()">
+            Concluir
+          </button>
+
+          @if(isGroupCreated()){
+            <button class="secondary-button" type="button" (click)="saveGroup()">
+              Salvar nome do grupo
+            </button>
+          }
+        </footer>
+      </div>
+    }
+  </div>
+</app-modal>
