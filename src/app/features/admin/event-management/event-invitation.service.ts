@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { LoadingService } from '../../../core/services/loading.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
-import { EventInvitation } from '../events/events.models';
+import { EventInvitation, InvitationDraft  } from './event-management.models';
 
 
 @Injectable({ providedIn: 'root' })
@@ -15,6 +15,7 @@ export class EventInvitationService {
       .select(`
         id,
         invitation_group_id,
+        invitation_label,
         access_token,
         event_invitation_guests (
           guest_id,
@@ -43,14 +44,17 @@ export class EventInvitationService {
     if (error) throw error;
   }
 
-  async attachGroups(eventId: string, groupIds: string[]): Promise<void> {
-    if (groupIds.length === 0) return;
-
+  async createPartitions(
+    eventId: string,
+    groupId: string,
+    partitions: Array<{ label: string | null; guest_ids: string[] }>,
+  ): Promise<void> {
     const query = this.supabase.client.rpc(
-      'attach_event_invitation_groups',
+      'create_event_invitation_partitions',
       {
         p_event_id: eventId,
-        p_group_ids: groupIds,
+        p_invitation_group_id: groupId,
+        p_partitions: partitions,
       },
     );
 
@@ -91,6 +95,22 @@ export class EventInvitationService {
         p_event_invitation_id: eventInvitationId,
       },
     );
+
+    const { error } = await this.loading.track(Promise.resolve(query));
+
+    if (error) throw error;
+  }
+
+  async splitInvitation(
+    invitationId: string,
+    label: string,
+    guestIds: string[],
+  ): Promise<void> {
+    const query = this.supabase.client.rpc('split_event_invitation', {
+      p_event_invitation_id: invitationId,
+      p_invitation_label: label,
+      p_guest_ids: guestIds,
+    });
 
     const { error } = await this.loading.track(Promise.resolve(query));
 

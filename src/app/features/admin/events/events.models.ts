@@ -35,13 +35,3 @@ export interface EventGift {
   selected_quantity: number;
   gift: Gift;
 }
-
-export interface EventInvitation {
-  id: string;
-  invitation_group_id: string;
-  access_token: string;
-  event_invitation_guests: Array<{
-    guest_id: string;
-    status: 'pending' | 'confirmed' | 'declined';
-  }>;
-}

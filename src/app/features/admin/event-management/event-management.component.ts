@@ -1,9 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { AlertService } from '../../../core/services/alert.service';
 import { EventService } from '../events/events.service';
-import { Event, EventInvitation } from '../events/events.models';
+import { Event } from '../events/events.models';
 import { GroupView } from '../guests/guests.models';
 import { InvitationGroupService } from '../guests/invitation-group.service';
 import { EventInvitationService } from './event-invitation.service';
@@ -12,6 +12,7 @@ import { Gift } from '../gifts/gifts.models';
 import { GiftService } from '../gifts/gifts.service';
 import { EventGiftService } from './event-gift.service';
 import { EventGift, EventGiftInput } from '../events/events.models';
+import { EventInvitation, InvitationDraft } from './event-management.models';
 
 type ManagementTab = 'overview' | 'guests' | 'gifts';
 
@@ -29,6 +30,7 @@ export class EventManagementComponent implements OnInit {
   private readonly eventInvitationService = inject(EventInvitationService);
   private readonly giftService = inject(GiftService);
   private readonly eventGiftService = inject(EventGiftService);
+  private readonly router = inject(Router);
 
   protected event = signal<Event | null>(null);
   protected isLoading = signal(true);
@@ -40,13 +42,21 @@ export class EventManagementComponent implements OnInit {
   protected isLoadingGuests = signal(false);
   protected guestsLoadError = signal(false);
   protected isGroupModalOpen = signal(false);
-  protected selectedGroupIds = signal<string[]>([]);
   protected isAddingGroups = signal(false);
   protected editingInvitationId = signal<string | null>(null);
   protected draftGuestIds = signal<string[]>([]);
   protected groupSearch = signal('');
   protected sharingInvitationId = signal<string | null>(null);
+  protected selectedGroupId = signal<string | null>(null);
+  protected invitationDrafts = signal<InvitationDraft[]>([]);
+  protected isSplitInvitationModalOpen = signal(false);
+  protected splitSourceInvitation = signal<EventInvitation | null>(null);
+  protected splitGuestIds = signal<string[]>([]);
+  protected splitInvitationLabel = signal('');
+  protected isSplittingInvitation = signal(false);
+  protected splitGuestSearch = signal('');
 
+  private nextInvitationDraftId = 0;
   private guestDataLoaded = false;
 
   protected gifts = signal<Gift[]>([]);
@@ -168,45 +178,156 @@ export class EventManagementComponent implements OnInit {
   }
 
   protected openGroupModal(): void {
-    this.selectedGroupIds.set([]);
+    this.selectedGroupId.set(null);
+    this.invitationDrafts.set([]);
     this.groupSearch.set('');
     this.isGroupModalOpen.set(true);
   }
 
   protected closeGroupModal(): void {
     this.isGroupModalOpen.set(false);
-    this.selectedGroupIds.set([]);
+    this.selectedGroupId.set(null);
+    this.invitationDrafts.set([]);
   }
 
-  protected isGroupSelected(groupId: string): boolean {
-    return this.selectedGroupIds().includes(groupId);
+  protected selectInvitationGroup(group: GroupView): void {
+    this.selectedGroupId.set(group.id);
+    this.invitationDrafts.set([
+      {
+        id: ++this.nextInvitationDraftId,
+        label: '',
+        guestIds: group.guests.map((guest) => guest.id),
+      },
+    ]);
   }
 
-  protected toggleGroupSelection(groupId: string, checked: boolean): void {
-    this.selectedGroupIds.update((ids) =>
-      checked
-        ? [...new Set([...ids, groupId])]
-        : ids.filter((id) => id !== groupId),
+  protected selectedGroupForInvitations(): GroupView | undefined {
+    const groupId = this.selectedGroupId();
+    return this.groups().find((group) => group.id === groupId);
+  }
+
+  protected clearSelectedInvitationGroup(): void {
+    this.selectedGroupId.set(null);
+    this.invitationDrafts.set([]);
+  }
+
+  protected addInvitationDraft(): void {
+    this.invitationDrafts.update((drafts) => [
+      ...drafts,
+      {
+        id: ++this.nextInvitationDraftId,
+        label: '',
+        guestIds: [],
+      },
+    ]);
+  }
+
+  protected setInvitationLabel(draftId: number, label: string): void {
+    this.invitationDrafts.update((drafts) =>
+      drafts.map((draft) =>
+        draft.id === draftId ? { ...draft, label } : draft,
+      ),
     );
   }
 
-  protected async addSelectedGroups(): Promise<void> {
-    const eventId = this.getEventId();
-    const groupIds = this.selectedGroupIds();
+  protected isGuestAssignedToDraft(
+    draftId: number,
+    guestId: string,
+  ): boolean {
+    return (
+      this.invitationDrafts()
+        .find((draft) => draft.id === draftId)
+        ?.guestIds.includes(guestId) ?? false
+    );
+  }
 
-    if (!eventId || groupIds.length === 0 || this.isAddingGroups()) return;
+  protected toggleGuestAssignment(
+    draftId: number,
+    guestId: string,
+    checked: boolean,
+  ): void {
+    this.invitationDrafts.update((drafts) =>
+      drafts.map((draft) => {
+        if (checked) {
+          return {
+            ...draft,
+            guestIds:
+              draft.id === draftId
+                ? [...new Set([...draft.guestIds, guestId])]
+                : draft.guestIds.filter((id) => id !== guestId),
+          };
+        }
+
+        return draft.id === draftId
+          ? {
+              ...draft,
+              guestIds: draft.guestIds.filter((id) => id !== guestId),
+            }
+          : draft;
+      }),
+    );
+  }
+
+  protected invitationPartitions(): Array<{
+    label: string | null;
+    guest_ids: string[];
+  }> {
+    const group = this.selectedGroupForInvitations();
+
+    if (!group) return [];
+
+    return this.invitationDrafts()
+      .filter((draft) => draft.guestIds.length > 0)
+      .map((draft) => {
+        const names = group.guests
+          .filter((guest) => draft.guestIds.includes(guest.id))
+          .map((guest) => guest.name);
+
+        const defaultLabel =
+          names.length <= 2
+            ? names.join(' e ')
+            : `${names[0]} e mais ${names.length - 1}`;
+
+        return {
+          label: draft.label.trim() || defaultLabel,
+          guest_ids: draft.guestIds,
+        };
+      });
+  }
+
+  protected canCreateInvitations(): boolean {
+    return (
+      this.selectedGroupId() !== null &&
+      this.invitationPartitions().length > 0 &&
+      !this.isAddingGroups()
+    );
+  }
+
+  protected async createGroupInvitations(): Promise<void> {
+    const eventId = this.getEventId();
+    const groupId = this.selectedGroupId();
+    const partitions = this.invitationPartitions();
+
+    if (!eventId || !groupId || !partitions.length || this.isAddingGroups()) {
+      return;
+    }
 
     this.isAddingGroups.set(true);
 
     try {
-      await this.eventInvitationService.attachGroups(eventId, groupIds);
+      await this.eventInvitationService.createPartitions(
+        eventId,
+        groupId,
+        partitions,
+      );
+
       this.closeGroupModal();
       this.guestDataLoaded = false;
       await this.loadGuestAssociations();
-      await this.alerts.success('Grupos associados ao evento.');
+      await this.alerts.success('Convites criados para o grupo.');
     } catch (error) {
-      console.error('Erro ao associar grupos:', error);
-      await this.alerts.error('Não foi possível associar os grupos selecionados.');
+      console.error('Erro ao criar convites para o grupo:', error);
+      await this.alerts.error('Não foi possível criar os convites.');
     } finally {
       this.isAddingGroups.set(false);
     }
@@ -432,7 +553,9 @@ export class EventManagementComponent implements OnInit {
   }
 
   protected closeActiveModal(): void {
-    if (this.isGroupModalOpen()) {
+    if (this.isSplitInvitationModalOpen()) {
+      this.closeSplitInvitationModal();
+    } else if (this.isGroupModalOpen()) {
       this.closeGroupModal();
     } else if (this.isGiftModalOpen()) {
       this.closeGiftModal();
@@ -532,12 +655,14 @@ export class EventManagementComponent implements OnInit {
 
     if (!currentEvent || this.sharingInvitationId()) return;
 
-    const url = new URL(`/convite/${invitation.access_token}`, window.location.origin).toString();
+    const url = new URL(document.baseURI);
+    url.hash = this.router.serializeUrl(this.router.createUrlTree(['/convte', invitation.access_token]));
+    const shareUrl = url.toString();
 
     this.sharingInvitationId.set(invitation.id);
 
     try {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(shareUrl);
         await this.alerts.success('Link do convite copiado.');
       } catch (clipboardError) {
         console.error('Erro ao compartilhar convite:', clipboardError);
@@ -582,5 +707,117 @@ export class EventManagementComponent implements OnInit {
         'Não foi possível resetar as respostas deste grupo.',
       );
     }
+  }
+
+  protected openSplitInvitationModal(invitation: EventInvitation): void {
+    if (invitation.event_invitation_guests.length < 2) return;
+
+    if (
+      invitation.event_invitation_guests.some(
+        (guest) => guest.status !== 'pending',
+      )
+    ) {
+      this.alerts.info(
+        'Resete as respostas antes de dividir este convite.',
+      );
+      return;
+    }
+
+    this.splitGuestSearch.set('');
+
+    this.splitSourceInvitation.set(invitation);
+    this.splitGuestIds.set([]);
+    this.splitInvitationLabel.set('');
+    this.isSplitInvitationModalOpen.set(true);
+  }
+
+  protected closeSplitInvitationModal(): void {
+    this.isSplitInvitationModalOpen.set(false);
+    this.splitSourceInvitation.set(null);
+    this.splitGuestIds.set([]);
+    this.splitInvitationLabel.set('');
+    this.splitGuestSearch.set('');
+  }
+
+  protected guestsInInvitation(invitation: EventInvitation): GroupView['guests'] {
+    const group = this.groupForInvitation(invitation);
+    const invitedGuestIds = new Set(
+      invitation.event_invitation_guests.map((guest) => guest.guest_id),
+    );
+
+    return group?.guests.filter((guest) => invitedGuestIds.has(guest.id)) ?? [];
+  }
+
+  protected isGuestSelectedForSplit(guestId: string): boolean {
+    return this.splitGuestIds().includes(guestId);
+  }
+
+  protected toggleGuestForSplit(guestId: string, checked: boolean): void {
+    this.splitGuestIds.update((ids) =>
+      checked
+        ? [...new Set([...ids, guestId])]
+        : ids.filter((id) => id !== guestId),
+    );
+  }
+
+  protected canSplitInvitation(): boolean {
+    const source = this.splitSourceInvitation();
+
+    return !!source &&
+      this.splitGuestIds().length > 0 &&
+      this.splitGuestIds().length < source.event_invitation_guests.length &&
+      !this.isSplittingInvitation();
+  }
+
+  protected async splitInvitation(): Promise<void> {
+    const source = this.splitSourceInvitation();
+    const selectedIds = this.splitGuestIds();
+
+    if (!source || !this.canSplitInvitation()) return;
+
+    const group = this.groupForInvitation(source);
+    const names = group?.guests
+      .filter((guest) => selectedIds.includes(guest.id))
+      .map((guest) => guest.name) ?? [];
+
+    const defaultLabel =
+      names.length <= 2
+        ? names.join(' e ')
+        : `${names[0]} e mais ${names.length - 1}`;
+
+    this.isSplittingInvitation.set(true);
+
+    try {
+      await this.eventInvitationService.splitInvitation(
+        source.id,
+        this.splitInvitationLabel().trim() || defaultLabel,
+        selectedIds,
+      );
+
+      this.closeSplitInvitationModal();
+      this.guestDataLoaded = false;
+      await this.loadGuestAssociations();
+      await this.alerts.success('Novo convite criado.');
+    } catch (error) {
+      console.error('Erro ao separar convidados:', error);
+      await this.alerts.error(
+        'Não foi possível separar os convidados. Confira as respostas e tente novamente.',
+      );
+    } finally {
+      this.isSplittingInvitation.set(false);
+    }
+  }
+
+  protected filteredGuestsInSplitInvitation(
+    invitation: EventInvitation,
+  ): GroupView['guests'] {
+    const term = this.normalizeSearch(this.splitGuestSearch().trim());
+    const guests = this.guestsInInvitation(invitation);
+
+    if (!term) return guests;
+
+    return guests.filter((guest) =>
+      this.normalizeSearch(guest.name).includes(term),
+    );
   }
 }

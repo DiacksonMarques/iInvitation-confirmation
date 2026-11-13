@@ -2,7 +2,8 @@
   @if (isLoading()) {
     <p class="page-message" role="status">Carregando convite...</p>
   } @else if (loadError()) {
-    <section class="invitation-card">
+    <section class="invitation-card state-card">
+      <span class="state-icon" aria-hidden="true">!</span>
       <h1>Não foi possível abrir o convite</h1>
       <button class="primary-button" type="button" (click)="loadInvitation()">
         Tentar novamente
@@ -10,9 +11,92 @@
     </section>
   } @else if (invitation(); as data) {
     <article class="invitation-card">
+      <svg
+        class="reveal-illustration"
+        viewBox="0 0 720 330"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <defs>
+          <radialGradient id="wash-sand">
+            <stop offset="0" stop-color="#d9c2a4" stop-opacity=".8" />
+            <stop offset="1" stop-color="#d9c2a4" stop-opacity="0" />
+          </radialGradient>
+          <radialGradient id="wash-caramel">
+            <stop offset="0" stop-color="#b9916e" stop-opacity=".58" />
+            <stop offset="1" stop-color="#b9916e" stop-opacity="0" />
+          </radialGradient>
+          <linearGradient id="bear-fur" x2="0" y2="1">
+            <stop stop-color="#e5c49f" />
+            <stop offset="1" stop-color="#bc8e68" />
+          </linearGradient>
+          <linearGradient id="bear-fur-light" x2="0" y2="1">
+            <stop stop-color="#f4dfbd" />
+            <stop offset="1" stop-color="#d1aa83" />
+          </linearGradient>
+        </defs>
+
+        <ellipse cx="245" cy="190" rx="220" ry="132" fill="url(#wash-sand)" />
+        <ellipse cx="480" cy="190" rx="220" ry="132" fill="url(#wash-caramel)" />
+
+        <g transform="translate(178 104)">
+          <ellipse cx="0" cy="145" rx="82" ry="15" fill="#82634c" opacity=".13" />
+          <ellipse cx="0" cy="111" rx="56" ry="57" fill="url(#bear-fur)" />
+          <ellipse cx="-38" cy="151" rx="28" ry="19" fill="#d2ad87" />
+          <ellipse cx="38" cy="151" rx="28" ry="19" fill="#d2ad87" />
+          <circle cx="-38" cy="34" r="28" fill="#b98962" />
+          <circle cx="38" cy="34" r="28" fill="#b98962" />
+          <circle cx="-38" cy="34" r="15" fill="#e2c19d" />
+          <circle cx="38" cy="34" r="15" fill="#e2c19d" />
+          <circle cy="62" r="58" fill="url(#bear-fur)" />
+          <ellipse cy="82" rx="31" ry="23" fill="#f5e5d0" />
+          <ellipse cy="73" rx="11" ry="8" fill="#634b3d" />
+          <circle cx="-23" cy="59" r="4" fill="#392c25" />
+          <circle cx="23" cy="59" r="4" fill="#392c25" />
+          <circle cx="-37" cy="81" r="7" fill="#c77970" opacity=".55" />
+          <circle cx="37" cy="81" r="7" fill="#c77970" opacity=".55" />
+          <path d="M-7 88q7 8 14 0" fill="none" stroke="#634b3d" stroke-linecap="round" stroke-width="3" />
+          <path d="M-30 112q30-18 60 0v39h-60Z" fill="#9ca77a" />
+          <path d="M-15 116 0 129l15-13" fill="none" stroke="#f5e8d3" stroke-width="4" />
+          <circle cy="139" r="3" fill="#f5e8d3" />
+        </g>
+
+        <g transform="translate(540 111)">
+          <ellipse cx="0" cy="145" rx="82" ry="15" fill="#82634c" opacity=".13" />
+          <ellipse cx="0" cy="111" rx="56" ry="57" fill="url(#bear-fur-light)" />
+          <ellipse cx="-38" cy="151" rx="28" ry="19" fill="#e2c19d" />
+          <ellipse cx="38" cy="151" rx="28" ry="19" fill="#e2c19d" />
+          <circle cx="-38" cy="34" r="28" fill="#d1a77f" />
+          <circle cx="38" cy="34" r="28" fill="#d1a77f" />
+          <circle cx="-38" cy="34" r="15" fill="#f0d8b8" />
+          <circle cx="38" cy="34" r="15" fill="#f0d8b8" />
+          <circle cy="62" r="58" fill="url(#bear-fur-light)" />
+          <ellipse cy="82" rx="31" ry="23" fill="#fff1dd" />
+          <ellipse cy="73" rx="11" ry="8" fill="#735744" />
+          <circle cx="-23" cy="59" r="4" fill="#392c25" />
+          <circle cx="23" cy="59" r="4" fill="#392c25" />
+          <circle cx="-37" cy="81" r="7" fill="#d99787" opacity=".6" />
+          <circle cx="37" cy="81" r="7" fill="#d99787" opacity=".6" />
+          <path d="M-7 88q7 8 14 0" fill="none" stroke="#735744" stroke-linecap="round" stroke-width="3" />
+          <path d="M-30 112q30-18 60 0v39h-60Z" fill="#d99787" />
+          <path d="M-15 116 0 129l15-13" fill="none" stroke="#fff1dd" stroke-width="4" />
+          <circle cy="139" r="3" fill="#fff1dd" />
+          <path d="M-20 8q20-25 40 0l-4 9h-32Z" fill="#b28a4f" />
+          <circle cy="-10" r="5" fill="#d6b66f" />
+        </g>
+      </svg>
+
       <header class="invitation-header">
-        <p class="eyebrow">VOCÊ ESTÁ CONVIDADO</p>
+        <p class="eyebrow">UM NOVO CAPÍTULO ESTÁ PARA COMEÇAR</p>
+
+        <div class="reveal-badge" aria-label="Convite para chá revelação">
+          <span aria-hidden="true">✦</span>
+          <span>Chá revelação</span>
+          <span aria-hidden="true">✦</span>
+        </div>
+
         <h1>{{ data.event.name }}</h1>
+        <p class="reveal-question">Menino ou menina?</p>
 
         @if (data.event.description) {
           <p class="event-description">{{ data.event.description }}</p>
@@ -20,37 +104,40 @@
       </header>
 
       <section class="event-details" aria-label="Informações do evento">
-        <div>
+        <div class="event-detail">
           <span>Data e horário</span>
           <strong>{{ data.event.event_date | date: 'dd/MM/yyyy HH:mm' }}</strong>
         </div>
 
-        @if (data.event.location) {
-          <div>
-            <span>Local</span>
-            <strong>{{ data.event.location }}</strong>
-          </div>
-        }
+        <div class="event-detail">
+          <span>Local</span>
+          <strong>{{ data.event.location || 'Local a confirmar' }}</strong>
+        </div>
 
         @if (data.event.confirmation_deadline) {
-          <div>
-            <span>Confirme até</span>
+          <div class="event-detail confirmation-deadline">
+            <span>Confirme sua presença até</span>
             <strong>
               {{ data.event.confirmation_deadline | date: 'dd/MM/yyyy HH:mm' }}
             </strong>
+            <small>Esperamos você para descobrir essa surpresa!</small>
           </div>
         }
       </section>
 
       @if (data.event.invitation_message) {
         <blockquote class="invitation-message">
+          <span class="message-mark" aria-hidden="true">“</span>
           {{ data.event.invitation_message }}
         </blockquote>
       }
 
       <section class="rsvp-section" aria-labelledby="rsvp-title">
-        <h2 id="rsvp-title">Confirmação de presença</h2>
-        <p>Selecione uma resposta para cada pessoa.</p>
+        <div class="section-heading">
+          <span class="section-kicker">VAI ser muito especial com você</span>
+          <h2 id="rsvp-title">Confirmação de presença</h2>
+          <p>Selecione uma resposta para cada pessoa.</p>
+        </div>
 
         @if (!data.event.can_confirm) {
           <p class="deadline-notice" role="status">
@@ -95,14 +182,17 @@
               </div>
             </article>
           } @empty {
-            <p>Não há convidados associados a este convite.</p>
+            <p class="gift-notice">Não há convidados associados a este convite.</p>
           }
         </div>
       </section>
 
       <section class="gift-section" aria-labelledby="gifts-title">
-        <h2 id="gifts-title">Lista de presentes</h2>
-        <p>Se desejar, escolha os presentes para o grupo.</p>
+        <div class="section-heading">
+          <span class="section-kicker">Com carinho</span>
+          <h2 id="gifts-title">Lista de presentes</h2>
+          <p>Se desejar, escolha presentes para o bebê.</p>
+        </div>
 
         @if (data.gifts.length === 0) {
           <p class="gift-notice">
@@ -149,7 +239,6 @@
                 @if (isGiftSelected(gift.event_gift_id)) {
                   <div class="public-gift-quantity">
                     <span>Quantidade</span>
-
                     <div
                       class="quantity-stepper"
                       role="group"
@@ -194,17 +283,9 @@
                   </div>
                 }
               </article>
-            }  @empty {
-              @if (data.gifts.length === 0) {
-                <p class="gift-notice">
-                  Ainda não há presentes disponíveis para este evento.
-                </p>
-              } @else {
-                <p class="gift-notice">
-                  Todos os presentes foram escolhidos.
-                </p>
-                }
-              }
+            } @empty {
+              <p class="gift-notice">Todos os presentes foram escolhidos.</p>
+            }
           </div>
 
           @if (data.event.can_select_gifts) {
@@ -219,9 +300,15 @@
           }
         }
       </section>
+
+      <footer class="invitation-footer">
+        Feito com carinho para celebrar esse momento.
+        <span aria-hidden="true">✦</span>
+      </footer>
     </article>
   } @else {
-    <section class="invitation-card">
+    <section class="invitation-card state-card">
+      <span class="state-icon" aria-hidden="true">✦</span>
       <p class="eyebrow">CONVITE</p>
       <h1>Convite não encontrado</h1>
       <p>Confira se o link recebido está completo e correto.</p>

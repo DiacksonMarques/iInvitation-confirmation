@@ -181,6 +181,15 @@
                   <button
                     class="secondary-button"
                     type="button"
+                    [disabled]="invitation.event_invitation_guests.length < 2"
+                    (click)="openSplitInvitationModal(invitation)"
+                  >
+                    Separar convidados
+                  </button>
+
+                  <button
+                    class="secondary-button"
+                    type="button"
                     [disabled]="sharingInvitationId() === invitation.id"
                     (click)="shareInvitation(invitation, group.name)"
                   >
@@ -194,10 +203,8 @@
                 <article class="associated-group">
                   <header class="associated-group-header">
                     <div>
-                      <h3>{{ group.name }}</h3>
-                      <p>
-                        Selecione as pessoas que participarão deste evento.
-                      </p>
+                      <h3>{{ invitation.invitation_label || group.name }}</h3>
+                      <p>Grupo: {{ group.name }}</p>
                     </div>
                     <span>
                       {{ invitation.event_invitation_guests.length }}
@@ -210,10 +217,11 @@
                       Este grupo ainda não possui convidados.
                     </p>
                   } @else {
+                    @let isEditing = editingInvitationId() === invitation.id;
+
                     <div class="guest-options">
-                      @for (guest of group.guests; track guest.id) {
+                      @for (guest of (isEditing ? group.guests : guestsInInvitation(invitation)); track guest.id) {
                         @let status = guestStatus(invitation, guest.id);
-                        @let isEditing = editingInvitationId() === invitation.id;
 
                         <label class="guest-option">
                           <input
@@ -417,45 +425,197 @@
 </main>
 
 <app-modal
-  [open]="isGroupModalOpen() || isGiftModalOpen()"
-  [title]="isGiftModalOpen() ? 'Adicionar presentes' : 'Adicionar grupos ao evento'"
+  [open]="isGroupModalOpen() || isGiftModalOpen() || isSplitInvitationModalOpen()"
+  [title]="isSplitInvitationModalOpen() ? 'Separar convidados' :isGiftModalOpen() ? 'Adicionar presentes' : 'Adicionar grupos ao evento'"
   (closed)="closeActiveModal()"
 >
-  @if (isGroupModalOpen()) {
-    <div class="group-picker">
-      <p>Selecione um ou mais grupos para associar a este evento.</p>
+  @if (isSplitInvitationModalOpen(); as isSplitting) {
+    @if (splitSourceInvitation(); as source) {
+      <div class="split-invitation-form">
+        <p>
+          Selecione quem receberá um novo link. Essas pessoas sairão do convite
+          atual, que continuará com os demais convidados.
+        </p>
 
-      <label class="group-search">
-        <span>Buscar grupo ou convidado</span>
-        <input
-          type="search"
-          placeholder="Digite um nome"
-          [value]="groupSearch()"
-          (input)="groupSearch.set($any($event.target).value)"
-        />
-      </label>
-
-      @for (group of filteredAvailableGroups(); track group.id) {
-        <label class="group-picker-option">
-          <input type="checkbox" [checked]="isGroupSelected(group.id)" (change)="toggleGroupSelection(group.id, $any($event.target).checked)"/>
-
-          <span>{{ group.name }}</span>
-          <small> {{ group.guests.length }} {{ group.guests.length === 1 ? 'pessoa' : 'pessoas' }}</small>
+        <label class="invitation-label">
+          <span>Nome do novo convite</span>
+          <input
+            type="text"
+            placeholder="Ex.: Diana, Jacson e Dairlyson"
+            [value]="splitInvitationLabel()"
+            (input)="splitInvitationLabel.set($any($event.target).value)"
+          />
         </label>
-      } @empty {
-        @if (availableGroups().length === 0) {
-          <p>Todos os grupos já estão associados a este evento.</p>
-        } @else {
-          <p>Nenhum grupo ou convidado corresponde à busca.</p>
+
+        <label class="group-search">
+          <span>Buscar convidado</span>
+          <input
+            type="search"
+            placeholder="Digite o nome"
+            [value]="splitGuestSearch()"
+            (input)="splitGuestSearch.set($any($event.target).value)"
+          />
+        </label>
+
+        <div class="guest-options">
+          @for (guest of filteredGuestsInSplitInvitation(source); track guest.id) {
+            <label class="guest-option">
+              <input
+                type="checkbox"
+                [checked]="isGuestSelectedForSplit(guest.id)"
+                (change)="toggleGuestForSplit(
+                  guest.id,
+                  $any($event.target).checked
+                )"
+              />
+              <span class="guest-option-name">{{ guest.name }}</span>
+            </label>
+          }
+        </div>
+
+        @if (
+          splitGuestIds().length >= source.event_invitation_guests.length
+        ) {
+          <p class="split-notice">
+            Deixe pelo menos uma pessoa no convite original.
+          </p>
         }
+
+        <footer class="guest-selection-footer">
+          <button
+            class="secondary-button"
+            type="button"
+            (click)="closeSplitInvitationModal()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            class="primary-button"
+            type="button"
+            [disabled]="!canSplitInvitation()"
+            (click)="splitInvitation()"
+          >
+            {{ isSplittingInvitation() ? 'Criando...' : 'Criar novo convite' }}
+          </button>
+        </footer>
+      </div>
+    }
+  } @else if (isGroupModalOpen()) {
+    <div class="group-picker">
+      @if (!selectedGroupId()) {
+        <p>Escolha o grupo para configurar os convites.</p>
+
+        <label class="group-search">
+          <span>Buscar grupo ou convidado</span>
+          <input
+            type="search"
+            placeholder="Digite um nome"
+            [value]="groupSearch()"
+            (input)="groupSearch.set($any($event.target).value)"
+          />
+        </label>
+
+        @for (group of filteredAvailableGroups(); track group.id) {
+          <label class="group-picker-option">
+            <input
+              type="radio"
+              name="invitation-group"
+              (change)="selectInvitationGroup(group)"
+            />
+            <span>{{ group.name }}</span>
+            <small>
+              {{ group.guests.length }}
+              {{ group.guests.length === 1 ? 'pessoa' : 'pessoas' }}
+            </small>
+          </label>
+        } @empty {
+          <p>Nenhum grupo disponível corresponde à busca.</p>
+        }
+      } @else if (selectedGroupForInvitations(); as group) {
+        <div class="selected-group-heading">
+          <div>
+            <h3>{{ group.name }}</h3>
+            <p>
+              O primeiro convite começa com todos os convidados. Ao marcar alguém
+              em outro convite, essa pessoa será movida para ele.
+            </p>
+          </div>
+
+          <button
+            class="text-button"
+            type="button"
+            (click)="clearSelectedInvitationGroup()"
+          >
+            Escolher outro grupo
+          </button>
+        </div>
+
+        @for (draft of invitationDrafts(); track draft.id; let index = $index) {
+          <section class="invitation-draft">
+            <label class="invitation-label">
+              <span>Nome deste convite</span>
+              <input
+                type="text"
+                placeholder="Ex.: Diackson e Karen"
+                [value]="draft.label"
+                (input)="setInvitationLabel(
+                  draft.id,
+                  $any($event.target).value
+                )"
+              />
+            </label>
+
+            <p>Selecione quem receberá este link:</p>
+
+            <div class="guest-options">
+              @for (guest of group.guests; track guest.id) {
+                <label class="guest-option">
+                  <input
+                    type="checkbox"
+                    [checked]="isGuestAssignedToDraft(draft.id, guest.id)"
+                    (change)="toggleGuestAssignment(
+                      draft.id,
+                      guest.id,
+                      $any($event.target).checked
+                    )"
+                  />
+                  <span class="guest-option-name">{{ guest.name }}</span>
+                </label>
+              }
+            </div>
+          </section>
+        }
+
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="addInvitationDraft()"
+        >
+          + Criar outro convite para este grupo
+        </button>
       }
+
       <footer class="guest-selection-footer">
-        <button class="secondary-button" type="button" (click)="closeGroupModal()">
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="closeGroupModal()"
+        >
           Cancelar
         </button>
 
-        <button class="primary-button" type="button" [disabled]="selectedGroupIds().length === 0 || isAddingGroups()" (click)="addSelectedGroups()">
-          {{ isAddingGroups() ? 'Adicionando...' : 'Adicionar ' + selectedGroupIds().length + ' grupo(s)' }}
+        <button
+          class="primary-button"
+          type="button"
+          [disabled]="!canCreateInvitations()"
+          (click)="createGroupInvitations()"
+        >
+          {{
+            isAddingGroups()
+              ? 'Criando...'
+              : 'Criar ' + invitationPartitions().length + ' convite(s)'
+          }}
         </button>
       </footer>
     </div>
