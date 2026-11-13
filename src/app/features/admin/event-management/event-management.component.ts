@@ -656,7 +656,7 @@ export class EventManagementComponent implements OnInit {
     if (!currentEvent || this.sharingInvitationId()) return;
 
     const url = new URL(document.baseURI);
-    url.hash = this.router.serializeUrl(this.router.createUrlTree(['/convte', invitation.access_token]));
+    url.hash = this.router.serializeUrl(this.router.createUrlTree(['/convite', invitation.access_token]));
     const shareUrl = url.toString();
 
     this.sharingInvitationId.set(invitation.id);
